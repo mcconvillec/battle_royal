@@ -27,7 +27,7 @@ Make a branch with your commits (be sure to branch from a fresh copy of master, 
 
 
 
-Project description:
+# Project description:
 
 Inputs: Each turn
 - String name of current location
