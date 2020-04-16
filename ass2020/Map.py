@@ -345,7 +345,7 @@ class Map():
         """@return True if n2 is an immediate neighbour of n1.
         """
         if n1 not in self.map_data['node_graph']:
-            return FALSE
+            return False
         return n2 in self.map_data['node_graph'][n1]
 
     def outside_circle(self, node): 

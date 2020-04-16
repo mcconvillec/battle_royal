@@ -50,9 +50,15 @@ class BasePlayer:
            @return (cmd, data) cmd is one of Command.* and data is a tuple of necessary data for a command.
         """
         assert(type(loc) is str)
-        assert(type(prices) is dict)
+        assert(type(this_market) is dict)
         assert(type(info) is dict)
 
         return (Command.PASS, None)
 
         # return (Command.BUY, (this_market.keys()[0], this_market.values()[1]))  # example BUY
+
+
+class Player(BasePlayer):
+  """Minimal player."""
+  def take_turn(self, location, prices, info, bm, gm):
+    return (Command.PASS, None)
