@@ -4,8 +4,7 @@ A kick-ass player for an imaginary battle-royal game
 
 FIRST TIME:
 1) create a directory wherever you want on your computer
-2) Navigate to this directory and run 'git init'
-3) In same directory run 'git clone https://github.com/mcconvillec/battle_royal.git'
+2) In same directory run 'git clone https://github.com/mcconvillec/battle_royal.git'
 
 When you clone the repository, navigate to where it is stored on your computer and run:
 1) python3 -m venv battle_royal
