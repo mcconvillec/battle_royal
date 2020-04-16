@@ -42,7 +42,7 @@ Function: take_turn
 
 - Output: each turn
 (Command.attribute, x)
-       o If Command.attribute = MOVE_TO or RESEARCH or PASS: x = None
-       o If Command.attribute = BUY, SELL: x = (product name, amount)
+     - If Command.attribute = MOVE_TO or RESEARCH or PASS: x = None
+     - If Command.attribute = BUY, SELL: x = (product name, amount)
 
 
