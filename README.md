@@ -20,7 +20,7 @@ Make a branch with your commits (be sure to branch from a fresh copy of master, 
 1) git checkout master && git pull
 2) git checkout -b feature/my_new_branch_name
 3) git add file.py && git commit -m "my new commit".    #Provides a message about what code you've added with the commit
-5) git push #pushes all your commits up to the git repository
+5) git push #pushes all your commits up to the git repository 'git push --set-upstream origin feature/my_new_branch_name'
 6) make a Pull Request on the github interface 
 7) get someone to review!
 
