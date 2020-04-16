@@ -1,6 +1,8 @@
 from BasePlayer import BasePlayer
 import socket
-
+"""
+   Submits player object converted to a string to the competition server
+"""
 
 def send_to_server(js):
 	"""Open socket and send the json string js to server with EOM appended, and wait
