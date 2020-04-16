@@ -10,6 +10,7 @@ When you clone the repository, navigate to where it is stored on your computer a
 1) python3 -m venv battle_royal
 2) source battle_royal/bin/activate
 3) pip install -r requirements.txt
+4) deavtivate battle_royal  #exits venv
 
 REPEAT STEPS 2 and 3 each time you work on the project
 
