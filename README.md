@@ -27,3 +27,22 @@ Make a branch with your commits (be sure to branch from a fresh copy of master, 
 
 
 
+Project description:
+
+Inputs: Each turn
+- String name of current location
+- Market inventory (if researched): {product: (price, amount), product2: (price,amount)}
+- Market inventory (if no research): {}
+- Player information: {market1: {product: price, product2: price}, market2: {product1: price, product2:price}}
+- Black: [“market1”, “market2”, “market3”]
+- Grey: [“market1”, “market2”, “market3”]
+
+
+Function: take_turn
+
+- Output: each turn
+(Command.attribute, x)
+       o If Command.attribute = MOVE_TO or RESEARCH or PASS: x = None
+       o If Command.attribute = BUY, SELL: x = (product name, amount)
+
+
