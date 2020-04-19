@@ -17,6 +17,11 @@ class BasePlayer:
         self.goal = None    # dictionary {product:amount needed}
         self.map = None     # Map object
 
+        #CHECK IF THIS IS ALLOWED?
+        self.market_history = {}
+        self.turn_num = 0
+        self.inventory = {}
+
     def set_goal(self, goal): 
         """This function gets called by the game at the start to 
            set the goal attribute of the player object.
@@ -56,9 +61,3 @@ class BasePlayer:
         return (Command.PASS, None)
 
         # return (Command.BUY, (this_market.keys()[0], this_market.values()[1]))  # example BUY
-
-
-class Player(BasePlayer):
-  """Minimal player."""
-  def take_turn(self, location, prices, info, bm, gm):
-    return (Command.PASS, None)
