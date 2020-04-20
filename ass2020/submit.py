@@ -1,4 +1,4 @@
-from BasePlayer import BasePlayer
+from Player import Player
 import socket
 """
    Submits player object converted to a string to the competition server
@@ -22,10 +22,10 @@ def send_to_server(js):
 	clientsocket.close()
 
 submission = {
-	"cmd": "ADD",
+	"cmd": "TEST",
 	"syn": "13",
 	"name": "test_13",
-	"data": str(BasePlayer())
+	"data": repr(Player)
 } 
 
 
