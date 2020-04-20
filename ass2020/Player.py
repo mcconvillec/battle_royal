@@ -28,12 +28,13 @@ Buying:
 Movement:
 - Conservative: leave as soon as Grey
 - Risky: If expected return off market is >100 stay (based on known prices of sale and buy prices or reaching goal)
+- Can I write a function that takes two nodes and returns a list of nodes that represents the shortest path between them?
 
 
 
 IMPORTANT DECISIONS:
 - If to research (done but need to also consider black or grey)
-- If to buy 
+- If to buy #prices, inventory, gold, goal
 - If to sell
 - If to move
 - Where to move
@@ -49,15 +50,17 @@ class Player(BasePlayer):
     #3) All the information we have seen from other players previously
     #4) Our gold
     #5) Our current inventory
-    """@param loc Name of your current location on map as a str.
-           @param this_market A dictionary {product:(price,amount)} of prices and amounts 
-                              at this market (if you have researched, {} otherwise).
-           @param info A dictionary {market:{product:price}} of information gleaned from other 
-                       players that were here when you arrived.
-           @param black_markets A list of market names (strings) that are Black.
-           @param grey_markets A list of market names (strings) that are Grey.
 
-           @return (cmd, data) cmd is one of Command.* and data is a tuple of necessary data for a command.
+    """
+    @param location Name of your current location on map as a str.
+    @param prices A dictionary {product:(price,amount)} of prices and amounts 
+    at this market (if you have researched, {} otherwise).
+    @param info A dictionary {market:{product:price}} of information gleaned from other 
+    players that were here when you arrived.
+    @param bm A list of market names (strings) that are Black.
+    @param gm A list of market names (strings) that are Grey.
+
+    @returns (cmd, data) cmd is one of Command.* and data is a tuple of necessary data for a command or None.
     """
 
     def take_turn(self, location, prices, info, bm, gm):
@@ -90,7 +93,7 @@ class Player(BasePlayer):
         elif self.market_history:
             """
             We have not researched the current market and need to decide if its
-            worth the tur required to research.
+            worth the turn required to research.
 
             We also have no information about other markets this turn
             """
