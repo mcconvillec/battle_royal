@@ -12,15 +12,10 @@ class BasePlayer:
         You SHOULD NOT ALTER THIS CLASS.
     """
     def __init__(self):
-            # all three of these get set by game when it starts
+        # all three of these get set by game when it starts
         self.gold = None    # float
         self.goal = None    # dictionary {product:amount needed}
         self.map = None     # Map object
-
-        #CHECK IF THIS IS ALLOWED?
-        self.market_history = {}
-        self.turn_num = 0
-        self.inventory = {}
 
     def set_goal(self, goal): 
         """This function gets called by the game at the start to 

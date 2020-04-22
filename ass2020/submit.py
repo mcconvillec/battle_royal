@@ -21,12 +21,14 @@ def send_to_server(js):
 
 	clientsocket.close()
 
-submission = {
-	"cmd": "TEST",
-	"syn": "13",
-	"name": "test_13",
-	"data": repr(Player)
-} 
+#submission = {
+#	"cmd": "TEST",
+#	"syn": "13",
+#	"name": "test_13",
+#	"data": repr(Player)
+#} 
 
+#from inspect import getsource
+#my_code = getsource(Player)
 
 send_to_server(submission)
