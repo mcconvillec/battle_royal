@@ -10,6 +10,8 @@ from collections import defaultdict
 import string
 #姐妹们加油
 #冲鸭！！！
+#hahaha
+#看得到吗
 # Constants for indicating status of circle.
 NODE_STATUS_WHITE = 0
 NODE_STATUS_GREY = 1
