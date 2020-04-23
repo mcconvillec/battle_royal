@@ -172,7 +172,7 @@ class Player(BasePlayer):
         
         #Always add any new information from other players to market_history in same format as prices
         if info:
-            print("we made it")
+            print(info)
             #NEED TO CHANGE THIS
             for market in info:
                 #as long as we don't already have the market information
