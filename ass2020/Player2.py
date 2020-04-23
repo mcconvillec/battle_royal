@@ -12,11 +12,12 @@ class Player(BasePlayer):
         #Instance variables that keep track of information throughout the game
 
         self.market_history = {} #combination of market research and info
-        self.turn_num = 0
-        self.inventory = {} #current player items and quantity in possession
+        self.turn = 0
+        self.inventory = defaultdict(int) #current player items and quantity in possession
         self.instructions = []
         self.needs = None #will store achievable goal
         self.savings = 1000
+        self.current_balance = 0
         
 
     def dijkstra_lite(self, n1, n2, blackm, greym):
@@ -93,7 +94,14 @@ class Player(BasePlayer):
                 return path
 
     def average_prices(self):
-        #returns list of items and their average prices
+        """
+        Author: Calum McConville
+        Function returns the current average of all prices based on
+        the most up-to-date information
+
+        returns a dictionary with items as keys and average price as
+        values
+        """
 
         averages = defaultdict(list)
         
@@ -107,21 +115,85 @@ class Player(BasePlayer):
         return averages
 
     def budget_amt(self, item, location, budget):
+        """
+        Author: Calum McConville
+        Function returns the number of a particular item that 
+        can be bought from a given store within a budget
+
+        @param item the item being investigated
+        @param location the market to buy from
+        @param budget the amount of money we are willing to spend
+
+        @returns the number of items that can be bought from the
+        given market within a budget
+        """
         
+        #price of the item at given market
         price = self.market_history[location][item][0]
+        
         return budget // price 
 
     
     def buy_choice(self, loc):
+        """
+        Author: Calum McConville
+        Function takes a market that has been researched and returns the 
+        recommended buying action (if any) based on goals and stock items
         
+        @param loc is the location of the market that has been researched
+        @return (item, qty) the name of an item and quantity to purchase (or None)
+        """
+
         #return current average prices based on known information
         avg_prices = self.average_prices()
         purchase_amt = None
+        goal_assessment = []
+        
+        for item in self.needs:
+            if item in self.market_history[loc] and self.needs[item] > 0:
+                value = (self.market_history[loc][item][0] * self.goal[item])>10000
 
+                #only want goal items that will provide 20% return at end of game
+                if value < 0.8:
+                    goal_assessment.append((value, item))
+                
+                #if we are in a position to reach our goal, prioritise this
+                elif self.market_history[loc][item][0] >= self.needs[item] and \
+                value < 1:
+                    goal_assessment.append((0, items))
+                    
+
+        #we've found a goal item at a price that will give use 20% return
+        if goal_assessment:
+            #purchase the highest value goal item
+            best_goal = sorted(goal_assessment)[0][1]
+            
+            #Buy either the store quantity, affordable quantity or goal quantity
+            purchase_amt = min(
+                int(self.budget_amt(best_goal, loc, self.gold - self.savings)),
+                self.market_history[loc][best_goal][1],
+                self.needs[best_goal]
+                )
+
+            #update state to reflect purchase
+            self.inventory[best_goal] = purchase_amt
+            self.current_balance -= purchase_amt * self.market_history[loc][best_goal][0]
+            self.needs[best_goal] -= purchase_amt
+            #return purchase decision
+            return (str(best_goal), purchase_amt)
+
+
+
+            
+
+        """
         for item in self.market_history[loc].keys():
-            print(item)
+
             if item in self.needs and self.needs[item] > 0:
-                #print(f"goal item = {item}")
+                
+                #How much value does this price represent relative to our goal
+                value = (self.market_history[loc][item][0] * self.goal[item])/10000
+
 
                 if self.market_history[loc][item][1] >= self.needs[item] \
                     and self.market_history[loc][item][0] * self.needs[item] < 10000:
@@ -131,16 +203,17 @@ class Player(BasePlayer):
                     
                     self.needs[item] -= purchase_amt
                     print(f"Command = {(Command.BUY, (str(item), purchase_amt))}")
-                    return (Command.BUY, (str(item), purchase_amt))
+                    return (str(item), purchase_amt)
 
                 elif self.market_history[loc][item][0] <= avg_prices[item]:
                     print(f"goal item below avg= {item}")
                     #NEED TO ADJUST BUDGET
                     purchase_amt = int((self.budget_amt(item, loc, 5000), self.needs[item]//2))
                     self.needs[item] -= purchase_amt
-                    print(f"Command = {(Command.BUY, (str(item), purchase_amt))}")
+                    print(f"Command = {(str(item), purchase_amt)}")
 
-                    return (Command.BUY, (str(item), purchase_amt))
+                    return (str(item), purchase_amt)
+        """
 
 
 
@@ -171,11 +244,11 @@ class Player(BasePlayer):
         assert(type(info) is dict)
         
         #keep track of the stage of the game
-        self.turn_num += 1
+        self.turn += 1
 
-        if self.turn_num == 1:
+        if self.turn == 1:
             self.needs = self.goal.copy()
-            print(f"needs = {self.needs}")
+            self.current_balance = self.gold
         
         #Always add any new information from other players to market_history in same format as prices
         if info:
@@ -189,35 +262,29 @@ class Player(BasePlayer):
 
 
         if prices:
-            """
-            We have researched the market and want to decide whether to buy
-            or sell
-            """
+            #we have researched the market and want to decide whether to buy or sell
+
+
             #Uses prices to update or add information stored in market_history
             self.market_history[location] = prices
 
-            #makes decision whether to buy at market
+            #makes decision whether to buy at market and returns decision
             instruction = self.buy_choice(location)
 
             if instruction:
-                print(instruction)
-                return instruction
+                return (Command.BUY, instruction)
 
             else:
                 #move
                 options = list(self.map.get_neighbours(location))
-                #print(f"no good buys at {location}")
                 return (Command.MOVE_TO, options[random.randint(0, len(options) - 1)])
 
 
         elif self.market_history:
-            """
-            We have not researched the current market and need to decide if its
-            worth the turn required to research.
-            """
+            #Market is not researched but we have current information
             
+            #calculates average prices based on current market information
             if location in self.market_history:
-                #i.e. we have information about this market from other players
                 avg_prices = self.average_prices()
                 for item in self.market_history[location].keys():
                     if item in avg_prices and \
@@ -225,16 +292,15 @@ class Player(BasePlayer):
                         return (Command.RESEARCH, None)
 
                 else:
-                    #move
+                    #move on if there are no reasonably priced items
                     options = list(self.map.get_neighbours(location))
-                    #print(f"not worth researching at {location}")
                     return (Command.MOVE_TO, options[random.randint(0, len(options) - 1)])
 
                 
 
 
             else:
-                #see how much money we can generate in 1,2,3,4,5,6,7 turns
+                #we have no information about the current market
                 return (Command.RESEARCH, None)
                 
                 #if location in bm:

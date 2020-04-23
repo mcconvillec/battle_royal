@@ -1,5 +1,5 @@
-from Player import Player
 import socket
+import json
 """
    Submits player object converted to a string to the competition server
 """
@@ -19,16 +19,18 @@ def send_to_server(js):
 		data += clientsocket.recv(1024).decode('utf-8')
 	print(data)
 
+
 	clientsocket.close()
 
-#submission = {
-#	"cmd": "TEST",
-#	"syn": "13",
-#	"name": "test_13",
-#	"data": repr(Player)
-#} 
+def submit_class(name, filename, cmd = "ADD", syn = 7):
+    f = open(filename)
+    object_dict = {"cmd": cmd, "syn": syn, "name":name, "data":f.read()}
+    f.close()
+    return json.dumps(object_dict)
 
 #from inspect import getsource
 #my_code = getsource(Player)
+submission = submit_class("xxBaTtLE_RoYalxx", "./Player2.py", cmd = "ADD", syn =13)
 
 send_to_server(submission)
+
