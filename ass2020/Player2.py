@@ -1,50 +1,8 @@
 from BasePlayer import BasePlayer
 import Command
 from collections import deque, defaultdict
-
-
-
-"""
-IDEAS:
-
-Buying:
-- If price of an item at a store is < average of all items or in x percentile of prices for that same
-  item that we have seen previously or from other players we buy as much as possible (or based on
-  what quantile it is in) and if store we would want to sell it isn't in black or grey. Need to now
-  store that we're heading for a given store or one of the stores that is close
-- Some weighting on how close to our target an item would get us and how good the price is
-- If we can buy enough to reach our target and the amount required to buy is > 10,000 then we buy (
-  based slightly on prices)
-- If we can overdraw but get to our goal AND we have extra items in stock that sell for more than overdraw,
-  go into debt
-- Sell the most valuable product categories that don't threaten goals when turn > 48, also don't buy new items late in game
-
-
-    #Decide whether to purchase items at the current market
-        #-Could we profit from buying items?
-        #      - Will we enter black zone by buying and is it worth the turn?
-        #-How much money do we have to spend?
-        #-How long is left in the game to sell what we have?
-
-Movement:
-- Conservative: leave as soon as Grey
-- Risky: If expected return off market is >100 stay (based on known prices of sale and buy prices or reaching goal)
-- Can I write a function that takes two nodes and returns a list of nodes that represents the shortest path between them?
-
-
-
-IMPORTANT DECISIONS:
-- If to research (done but need to also consider black or grey)
-- If to buy #prices, inventory, gold, goal
-- If to sell
-- If to move
-- Where to move
-
-Of all the information we have:
-- Calculate the profit we can make at each market and how many turns it will take to realise that profit
-- Decide based on amount of profit/number of turns which market to travel to
-- Perfect market is where we can sell our other items high and also then stock up on goal items
-"""
+import random
+from statistics import mean
 
 
 class Player(BasePlayer):
@@ -57,8 +15,9 @@ class Player(BasePlayer):
         self.turn_num = 0
         self.inventory = {} #current player items and quantity in possession
         self.instructions = []
-        self.target = None #will store achievable goal
-        self.plan = None #will store planned location and instructions for when we get there
+        self.needs = None #will store achievable goal
+        self.savings = 1000
+        
 
     def dijkstra_lite(self, n1, n2, blackm, greym):
         """
@@ -132,40 +91,63 @@ class Player(BasePlayer):
             if path:
                 path.appendleft(current_node)
                 return path
-    
-    def market_profit(self, market):
-        """
-        Author: Calum McConville
-        @param market is the market we want to evaluate
 
-        @returns the route to the most profitable selling market over x turns
-        """
+    def average_prices(self):
+        #returns list of items and their average prices
 
-        #profit = price we could sell our inventory + time it takes to get there 
-        market_prices = self.market_history[market]
-
-        expected_profit = 0
-        for item in market_prices and item not in self.target:
-            expected_profit += market_prices[item][0] * self.inventory[item]
-
-        return expected_profit
-
-    def sell_options(self, location, bm, gm):
+        averages = defaultdict(list)
         
-        options = []
-        distance = 0
-        for market in self.map.map_data['node_graph'].keys():
-            
-            profit = self.market_profit(market)
-            #tests if we have researched the market
-            if market in self.market_history and self.market_history[market][0][1]
-                distance = len(self.dijkstra_lite(location, market, bm, gm))
-            else:
-                distance = len(self.dijkstra_lite(location, market, bm, gm)) + 1
-                
-            options.append((profit, distance, market))
+        #compiles all prices of items currently known
+        for market in self.market_history.keys():
+            for item in self.market_history[market].keys():
+                averages[item].append(self.market_history[market][item][0])
+        
+        #creates averages of each item based on current information
+        averages = {k: mean(v) for k, v in averages.items()}
+        return averages
 
-        options = sorted(options, reverse = True)
+    def budget_amt(self, item, location, budget):
+        
+        price = self.market_history[location][item][0]
+        return budget // price 
+
+    
+    def buy_choice(self, loc):
+        
+        #return current average prices based on known information
+        avg_prices = self.average_prices()
+        purchase_amt = None
+
+        for item in self.market_history[loc].keys():
+            print(item)
+            if item in self.needs and self.needs[item] > 0:
+                #print(f"goal item = {item}")
+
+                if self.market_history[loc][item][1] >= self.needs[item] \
+                    and self.market_history[loc][item][0] * self.needs[item] < 10000:
+
+                    
+                    purchase_amt = int(self.budget_amt(item, loc, self.gold - self.savings))
+                    
+                    self.needs[item] -= purchase_amt
+                    print(f"Command = {(Command.BUY, (str(item), purchase_amt))}")
+                    return (Command.BUY, (str(item), purchase_amt))
+
+                elif self.market_history[loc][item][0] <= avg_prices[item]:
+                    print(f"goal item below avg= {item}")
+                    #NEED TO ADJUST BUDGET
+                    purchase_amt = int((self.budget_amt(item, loc, 5000), self.needs[item]//2))
+                    self.needs[item] -= purchase_amt
+                    print(f"Command = {(Command.BUY, (str(item), purchase_amt))}")
+
+                    return (Command.BUY, (str(item), purchase_amt))
+
+
+
+
+
+    
+ 
 
 
 
@@ -190,11 +172,15 @@ class Player(BasePlayer):
         
         #keep track of the stage of the game
         self.turn_num += 1
+
+        if self.turn_num == 1:
+            self.needs = self.goal.copy()
+            print(f"needs = {self.needs}")
         
         #Always add any new information from other players to market_history in same format as prices
         if info:
-            print(info)
-            #NEED TO CHANGE THIS
+            
+            #Add information to market_history
             for market in info.keys():
                 #as long as we don't already have the market information
                 if market not in self.market_history:
@@ -210,10 +196,19 @@ class Player(BasePlayer):
             #Uses prices to update or add information stored in market_history
             self.market_history[location] = prices
 
-            #move towards c
-            path = self.dijkstra_lite(location, 'c', bm, gm)
-            print(path)
-            return (Command.MOVE_TO, path[1])
+            #makes decision whether to buy at market
+            instruction = self.buy_choice(location)
+
+            if instruction:
+                print(instruction)
+                return instruction
+
+            else:
+                #move
+                options = list(self.map.get_neighbours(location))
+                #print(f"no good buys at {location}")
+                return (Command.MOVE_TO, options[random.randint(0, len(options) - 1)])
+
 
         elif self.market_history:
             """
@@ -223,41 +218,32 @@ class Player(BasePlayer):
             
             if location in self.market_history:
                 #i.e. we have information about this market from other players
+                avg_prices = self.average_prices()
+                for item in self.market_history[location].keys():
+                    if item in avg_prices and \
+                     self.market_history[location][item][0] < avg_prices[item]:
+                        return (Command.RESEARCH, None)
+
+                else:
+                    #move
+                    options = list(self.map.get_neighbours(location))
+                    #print(f"not worth researching at {location}")
+                    return (Command.MOVE_TO, options[random.randint(0, len(options) - 1)])
+
                 
-                market_avg = defaultdict(list)
-                #compute average prices function:
-                for loc in self.market_history:
-                    for prod in self.market_history[loc]:
-                        #keep track of the price of all products
-                        market_avg[prod].append(self.market_history[loc][prod][0])
-
-                #check if this market has stock of goal items or price competitive items.
-                for product in self.market_history[location]:
-                    #check if prices in this market are competitive with other prices
-                    if self.market_history[location][product][0] <= mean(market_avg[product]) and self.turn_num <= 45:
-                        return (Command.RESEARCH, None)
-                    
-                    #check if there are goal items and if we've met our goal
-                    elif product in goal and (self.inventory and self.inventory[product] < self.goal[product]):
-                        return (Command.RESEARCH, None)
-                    
-
-                #didn't find any low price items or goal items
-                #assess where we should move
 
 
             else:
                 #see how much money we can generate in 1,2,3,4,5,6,7 turns
-
-                return (Command.PASS, None)
-                #we have no information about this location
-                if location in gm:
-                    #location is grey, so researching would put us in black
-                    #assess where we can move to and move away from black
-                    pass
-                elif location in bm:
+                return (Command.RESEARCH, None)
+                
+                #if location in bm:
                     #probably try and get out
-                    pass
+                #    path = get_out(self, location) #tells us shortest path out of black and grey
+
+                #else:
+                #    return (Command.RESEARCH, None)
+        
         else:
             #WE HAVE NO INFORMATION ABOUT ANY MARKETS IN THE GAME
             return (Command.RESEARCH, None)
