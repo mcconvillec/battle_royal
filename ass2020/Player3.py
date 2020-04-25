@@ -19,6 +19,7 @@ class Player(BasePlayer):
         self.savings = 1000
         self.current_balance = 0
         self.destination = []
+
     
 
     def turn_optimise(self, loc, bm, gm, turn):
@@ -203,7 +204,7 @@ class Player(BasePlayer):
         
         for item in self.needs:
             if item in self.market_history[loc] and self.needs[item] > 0:
-                value = (self.market_history[loc][item][0] * self.goal[item])>10000
+                value = (self.market_history[loc][item][0] * self.goal[item])/10000
 
                 #only want goal items that will provide 20% return at end of game
                 if value < 0.8:
@@ -267,14 +268,72 @@ class Player(BasePlayer):
                     return (str(item), purchase_amt)
         """
 
+    def predict_avg_quantity(self):
+        """
+        Function returns the current average of all quantities based on
+        the most up-to-date information
+
+        returns a dictionary with items as keys and average quantity as
+        values
+        """
+
+        predict_avg_qty = defaultdict(list)
+
+        # compiles all quantities of items currently known
+        for market in self.market_history.keys():
+            for item in self.market_history[market]:
+                if self.market_history[market][item][1] == None:
+                    pass
+                else:
+                    predict_avg_qty[item].append(self.market_history[market][item][1])
+
+        # creates averages qty of each item based on current information
+        predict_avg_qty = {k: mean(v) for k, v in predict_avg_qty.items()}
+        return predict_avg_qty
 
 
+    def market_item_to_buy (self,market):
+        """
+        Function returns the best item to buy in this market based on
+        the most up-to-date information
+
+        returns an item name
+        """
 
 
-    
- 
+        # If goal not reached
+        if sum(self.needs.values()) !=0:
 
+            best_item = ''
+            best_mark = 0
 
+            # use item marks to find the best item in this market, ranking based on required quantity
+            for i in self.market_history[market].keys():
+                item_mark = (average_prices(self)[i] / self.market_history[market][i][0]) * self.needs[i]
+
+                if best_mark < item_mark:
+                    best_mark = item_mark
+                    best_item = i
+
+            return best_item
+
+        # If all goals are reached, ranking based on market quantity
+        else:
+            best_item = ''
+            best_mark = 0
+
+            for i in self.market_history[market].keys():
+
+                if self.market_history[market][i][1] != None:
+                    item_mark = (average_prices(self)[i] / self.market_history[market][i][0]) * self.market_history[market][i][1]
+                else:
+                    item_mark = (average_prices(self)[i] / self.market_history[market][i][0]) * predict_avg_quantity(self)[i]
+
+                if best_mark < item_mark:
+                    best_mark = item_mark
+                    best_item = i
+
+            return best_item
 
 
     def take_turn(self, location, prices, info, bm, gm):
