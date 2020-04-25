@@ -297,7 +297,10 @@ class Player(BasePlayer):
         Function returns the best item to buy in this market based on
         the most up-to-date information
 
-        returns an item name
+        returns an item name and quantity we can buy
+
+        if no quantity information: return item name and None (need to decided whether to go to that market
+        while making buying decision)
         """
 
 
@@ -307,15 +310,30 @@ class Player(BasePlayer):
             best_item = ''
             best_mark = 0
 
-            # use item marks to find the best item in this market, ranking based on required quantity
+            # use item marks to find the best item in this market, ranking based on required quantity.
+            # if quantity unknown, use predict quantity
+
             for i in self.market_history[market].keys():
-                item_mark = (average_prices(self)[i] / self.market_history[market][i][0]) * self.needs[i]
+                if self.market_history[market][i][1] != None:
+
+                    qty = min(self.needs[i],market_history[market][i][1])
+                    item_mark = (average_prices(self)[i] / self.market_history[market][i][0]) * qty
+
+                else:
+                    qty = min(self.needs[i],predict_avg_quantity(self)[i])
+                    item_mark = (average_prices(self)[i] / self.market_history[market][i][0]) * qty
 
                 if best_mark < item_mark:
-                    best_mark = item_mark
-                    best_item = i
+                   best_mark = item_mark
+                   best_item = i
 
-            return best_item
+                # the max. amount we can buy
+            if self.market_history[market][best_item][1] != None:
+                buy_qty = self.current_balance // self.market_history[market][best_item][0]
+            else:
+                buy_qty = None
+
+            return (best_item , buy_qty)
 
         # If all goals are reached, ranking based on market quantity
         else:
@@ -333,7 +351,13 @@ class Player(BasePlayer):
                     best_mark = item_mark
                     best_item = i
 
-            return best_item
+            buy_qty=0
+            if self.market_history[market][i][1] != None:
+                buy_qty = self.market_history[market][i][1]
+            else:
+                buy_qty = None
+
+            return (best_item , buy_qty)
 
 
     def take_turn(self, location, prices, info, bm, gm):
