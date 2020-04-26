@@ -5,6 +5,12 @@ import random
 from statistics import mean
 
 
+#ISSUES TO FIX:
+#-Inventory and gold are being calculated incorrectly
+#-Could be something to do with Command.SELL not working
+
+
+
 class Player(BasePlayer):
 
 
@@ -14,13 +20,12 @@ class Player(BasePlayer):
         self.market_history = {} #combination of market research and info
         self.turn = 0
         self.inventory = defaultdict(int) #current player items and quantity in possession
-        self.instructions = []
         self.needs = None #will store achievable goal
         self.savings = 1000
         self.current_balance = 0
         self.destination = []
     
-
+    """
     def turn_optimise(self, loc, bm, gm, turn):
         #finds the optimal market to travel to from loc
         #converges due to turn penalty
@@ -31,10 +36,11 @@ class Player(BasePlayer):
         #creates a list of all markets that can be accessed in turn number of turns
         for market in self.market_history.keys():
 
-            if self.dijkstra_lite(loc, market, bm, gm) == turn:
+            if len(self.dijkstra_lite(loc, market, bm, gm)) - 1 == turn:
                 in_range.append(market)
 
         #return nothing if we're now out of range in the map
+        #CHANGE SO THAT WE TOLERATE GAPS
         if not in_range:
             return None
         
@@ -48,12 +54,8 @@ class Player(BasePlayer):
                 best_market = market
                 turn_max = market_max
 
-        return (turn_max, best_market)
-
-
-
-
-
+        return (turn_max, best_market) #should it just return market
+    """
 
 
     def dijkstra_lite(self, n1, n2, blackm, greym):
@@ -91,7 +93,7 @@ class Player(BasePlayer):
             while vertices:
                 #select unvisited node with smallest distance as current position
                 current_node = min(vertices, key = lambda vertex: (distances[vertex], vertex)) 
-                print(f"current node = {current_node}")
+                #print(f"current node = {current_node}")
 
                 #break if smallest distance among unvisited is infinity (something is wrong)
                 if distances[current_node] == float("inf"):
@@ -102,7 +104,6 @@ class Player(BasePlayer):
                 Nodes that are either black or grey receive an additional penalty
                 """
                 for neighbour in self.map.map_data['node_graph'][current_node]:
-                    print(f"neighbour = {neighbour}")
                     if neighbour in blackm:
                         alternative_route = distances[current_node] + black_cost
                     elif neighbour in greym:
@@ -127,7 +128,8 @@ class Player(BasePlayer):
                 current_node = previous_vertices[current_node]
             if path:
                 path.appendleft(current_node)
-                return list(path)
+            
+            return list(path)
 
     def average_prices(self):
         """
@@ -170,29 +172,46 @@ class Player(BasePlayer):
         return budget // price 
 
     
-    def value_inventory(self, market):
+    def value_inventory(self, market, decision_type = None):
         """
         Author: Calum McConville
-        This function takes a market and returns a value of the current
-        inventory at that location
+        This function takes a market and returns the value of the best selling decision
+        for that market
         """
 
         best_return = 0
         for item in self.market_history[market].keys():
-            item_value = self.market_history[market][item][0] * self.inventory[item]
+            #ONLY CONSIDERS SELLING STOCK ON TOP OF needs. CAN CHANGE THIS FOR TESTING
+            item_value = self.market_history[market][item][0] * (self.inventory[item] - self.goal[item])
+            #item_value = self.market_history[market][item][0] * (self.inventory[item])
 
             if item_value > best_return:
                 best_return = item_value
+                if decision_type == "sell":
+                    sell_item = item
+
+        if decision_type == "sell" and best_return > 0: #NEED SOMETHING TO HANDLE IF IT HAS NO SELLING BECAUSE OF 0 INVENTORY
+            sell_amount = (self.inventory[item] - self.goal[item])
+            #sell_amount = self.inventory[sell_item]
+            self.inventory[sell_item] -= sell_amount
+            self.current_balance += (self.market_history[market][sell_item][0] * sell_amount)
+            return (sell_item, sell_amount)
+
         return best_return
 
 
-    def buy_choice(self, loc):
+
+
+
+
+    def buy_goal(self, loc, decision_type = "investigate"):
         """
         Author: Calum McConville
         Function takes a market that has been researched and returns the 
-        recommended buying action (if any) based on goals and stock items
+        recommended buying action (if any) based on goals
         
         @param loc is the location of the market that has been researched
+        @param goals is the goals we want to consider
         @return (item, qty) the name of an item and quantity to purchase (or None)
         """
 
@@ -203,78 +222,38 @@ class Player(BasePlayer):
         
         for item in self.needs:
             if item in self.market_history[loc] and self.needs[item] > 0:
-                value = (self.market_history[loc][item][0] * self.goal[item])>10000
+                value = (self.market_history[loc][item][0] * self.goal[item])/10000
 
                 #only want goal items that will provide 20% return at end of game
-                if value < 0.8:
+                if value <= 0.8:
                     goal_assessment.append((value, item))
                 
                 #if we are in a position to reach our goal, prioritise this
                 elif self.market_history[loc][item][0] >= self.needs[item] and \
                 value < 1:
-                    goal_assessment.append((0, items))
-                    
+                    goal_assessment.append((0, item))
+        
+        if goal_assessment and decision_type == "investigate":
+            return "research"
 
         #we've found a goal item at a price that will give use 20% return
-        if goal_assessment:
+        elif goal_assessment:
             #purchase the highest value goal item
             best_goal = sorted(goal_assessment)[0][1]
             
             #Buy either the store quantity, affordable quantity or goal quantity
             purchase_amt = min(
-                int(self.budget_amt(best_goal, loc, self.gold - self.savings)),
+                int(self.budget_amt(best_goal, loc, self.current_balance)),
                 self.market_history[loc][best_goal][1],
                 self.needs[best_goal]
                 )
 
             #update state to reflect purchase
-            self.inventory[best_goal] = purchase_amt
+            self.inventory[best_goal] += purchase_amt
             self.current_balance -= purchase_amt * self.market_history[loc][best_goal][0]
             self.needs[best_goal] -= purchase_amt
             #return purchase decision
             return (str(best_goal), purchase_amt)
-
-
-
-            
-
-        """
-        for item in self.market_history[loc].keys():
-
-            if item in self.needs and self.needs[item] > 0:
-                
-                #How much value does this price represent relative to our goal
-                value = (self.market_history[loc][item][0] * self.goal[item])/10000
-
-
-                if self.market_history[loc][item][1] >= self.needs[item] \
-                    and self.market_history[loc][item][0] * self.needs[item] < 10000:
-
-                    
-                    purchase_amt = int(self.budget_amt(item, loc, self.gold - self.savings))
-                    
-                    self.needs[item] -= purchase_amt
-                    print(f"Command = {(Command.BUY, (str(item), purchase_amt))}")
-                    return (str(item), purchase_amt)
-
-                elif self.market_history[loc][item][0] <= avg_prices[item]:
-                    print(f"goal item below avg= {item}")
-                    #NEED TO ADJUST BUDGET
-                    purchase_amt = int((self.budget_amt(item, loc, 5000), self.needs[item]//2))
-                    self.needs[item] -= purchase_amt
-                    print(f"Command = {(str(item), purchase_amt)}")
-
-                    return (str(item), purchase_amt)
-        """
-
-
-
-
-
-    
- 
-
-
 
 
     def take_turn(self, location, prices, info, bm, gm):
@@ -289,57 +268,29 @@ class Player(BasePlayer):
 
         @returns (cmd, data) cmd is one of Command.* and data is a tuple of necessary data for a command or None.
         """
-        
+        #print(f"current location is {location}")
+        #print(f"Path = {self.destination}")
+        #print(f"Inventory = {self.inventory}")
+
         #return (Command.PASS, None)
         assert(type(location) is str)
         assert(type(prices) is dict)
         assert(type(info) is dict)
         
-        #keep track of the stage of the game
+        #keep track of the stage of the game and available gold balance
         self.turn += 1
 
         if self.turn == 1:
             self.needs = self.goal.copy()
-            self.current_balance = self.gold
+            self.current_balance = self.gold - self.savings #create buffer amount to prevent accruing debt
+
+        if location in bm:
+            self.current_balance -= 100
+
+        if current_balance < 0:
+            self.current_balance -= self.current_balance * 0.15
         
-        
-        #Start optimising location
-        #Can build in a switch that says if amount we can sell is < turn_value then switch
-        #to buy mode
-        if len(self.market_history) > 5 and not self.destination:
-            turn_value = 200 + self.turn #i.e. later in the game a turn has higher value
-            converge = False
-            radius = 1 #doesn't consider current market
-            current_solution = self.turn_optimise(location, bm, gm, radius)
-
-            #if current_solution > turn_val:
-
-            while not converge and next_solution:
-
-                next_solution = self.turn_optimise(location, bm, gm, radius + 1)
-
-                if next_solution and (next_solution[0] > current_solution[0] + turn_value):
-
-                    #we want to expand our radius
-                    current_solution = next_solution
-                    radius += 1
-                else:
-                    #additional move doesn't justify cost so converge
-                    converge = True
-
-            self.destination = self.dijkstra_lite[location, current_solution[1], bm, gm][1:]
-
-       
-        elif self.destination:
-            next_step = self.destination.pop(0)
-            return (Command.MOVE_TO, next_step)
-
-
-        #HOW TO ACT WHEN I'M AT DESTINATION
-
-
-
-        #Always add any new information from other players to market_history in same format as prices
+        #Update market_history based on new information or prices received that turn
         if info:
             
             #Add information to market_history
@@ -349,67 +300,160 @@ class Player(BasePlayer):
                     self.market_history[market] = \
                     {k: (v, None) for (k, v) in info[market].items()}
 
-
         if prices:
-            #we have researched the market and want to decide whether to buy or sell
-
-
             #Uses prices to update or add information stored in market_history
             self.market_history[location] = prices
 
-            #makes decision whether to buy at market and returns decision
-            instruction = self.buy_choice(location)
 
-            if instruction:
-                return (Command.BUY, instruction)
+        if len(self.market_history) < 10:
+            #We have minimal information and should only really make an assessment on goals
 
-            else:
-                #move
-                options = list(self.map.get_neighbours(location))
-                return (Command.MOVE_TO, options[random.randint(0, len(options) - 1)])
+            if prices:
+                #we have researched the market and want to decide whether to buy or sell
+                #makes decision whether to buy at market and returns decision
+                instruction = self.buy_goal(location)
+                if instruction:
+
+                    #UPDATE INVENTORY
+                    #UPDATE GOLD
+                    return (Command.BUY, instruction)
+                else:
+                    #move randomly based away from grey and black region
+                    options = [x for x in list(self.map.get_neighbours(location)) if x not in (bm + gm)]
+                    return (Command.MOVE_TO, options[random.randint(0, len(options) - 1)])
 
 
-        elif self.market_history:
-            #Market is not researched but we have current information
+            elif self.market_history:
+                #Market is not researched but we have current information
+                
+                #calculates average prices based on current market information
+                if location in self.market_history:
+                    if self.buy_goal(location, decision_type = "investigate") == "research":
+                        return (Command.RESEARCH, None)
+                    else:
+                        #move randomly based away from grey and black region
+                        options = [x for x in list(self.map.get_neighbours(location)) if x not in (bm + gm)]
+                        return (Command.MOVE_TO, options[random.randint(0, len(options) - 1)])
+
+                else:
+                    #we have no information about the current market
+                    return (Command.RESEARCH, None)
             
-            #calculates average prices based on current market information
-            if location in self.market_history:
+            else:
+                #We have no information about any markets
+                return (Command.RESEARCH, None)
+
+        #Start optimising location
+        elif len(self.market_history) >= 10: #CHANGE BACK TO 5
+
+            if not self.destination:
+                """
+                #need to create a new plan
                 avg_prices = self.average_prices()
-                for item in self.market_history[location].keys():
-                    if item in avg_prices and \
-                     self.market_history[location][item][0] < avg_prices[item]:
+
+                remaining_goals = []
+                for item in self.needs:
+                    #if there are unfulfilled goals we can afford
+                    if self.needs[item] > 0 and (self.current_balance > self.needs[item] * avg_prices):
+                        remaining_goals.append(item)
+
+                if remaining_goals:
+                    #look for best value to get remaining goals
+                    best_value = (0, None, None)
+                    for market in self.market_history.keys():
+                        for item in remaining_goals:
+                            value = (self.market_history[loc][item][0] * self.goal[item])/10000
+                            if value > best_value[0]:
+                                best_value = (value, item, market)
+
+                    if best_value[-1] == location:
+                        return (Command.BUY, )
+                    else:
+                        self.destination = self.dijkstra_lite[location, market, bm, gm][2:] + ['buy']
+                        next_step = self.destination.pop(0)
+                        return (Command.MOVE_TO, next_step)
+
+                """
+
+
+                turn_value = 200 + self.turn #i.e. later in the game a turn has higher value
+                turn_max = defaultdict(tuple)
+
+                #find optimum selling decisions for each turn
+                for market in self.market_history.keys():
+                    path = len(self.dijkstra_lite(location, market, bm, gm))
+                    radius = max(0, path - 1) #incase we're considering current location
+
+                    if not radius in turn_max:
+                        turn_max[radius] = (self.value_inventory(market), market)
+                    else:
+                        market_sell = self.value_inventory(market)
+                        if market_sell > turn_max[radius][0]:
+                            turn_max[radius] = (market_sell, market)
+
+                if 0 not in turn_max:
+                    #we haven't researched current location
+                    current_solution = (0, location)
+
+                else:
+                    current_solution = turn_max[0]
+
+                for n_turn in turn_max.keys():
+                    #print(current_solution)
+                    #print(n_turn)
+                    #print(self.turn, turn_value)
+                    #print(turn_max)
+                    if turn_max[n_turn][0] > current_solution[0] - (n_turn * turn_value):
+                        current_solution = turn_max[n_turn]
+
+                if current_solution[1] == location:
+                    if prices:
+                        self.destination = []
+                        decision = self.value_inventory(location, decision_type = "sell")
+
+                        if type(decision) == int:
+                            return (Command.PASS, None)
+
+
+                        print(self.inventory)
+                        print(f"Command.SELL = {decision}")
+                        return (Command.SELL, decision)
+                    else:
+                        return (Command.RESEARCH, None)
+
+
+                else:
+                    self.destination = list(self.dijkstra_lite(location, current_solution[1], bm, gm))[1:] + ['sell']
+                    next_step = self.destination.pop(0)
+                    return (Command.MOVE_TO, next_step)
+
+       
+            elif self.destination:
+                #focus on executing current plan
+                if self.destination == ['sell']:
+                    if prices:
+                        self.destination = []
+                        decision = self.value_inventory(location, decision_type = "sell")
+
+                        if type(decision) == int:
+                            return (Command.PASS, None)
+
+
+                        print(self.inventory)
+                        return (Command.SELL, decision)
+                    else:
+                        return (Command.RESEARCH, None)
+
+
+                elif self.destination == ['buy']:
+                    #reached destination and should sell
+                    if prices:
+                        self.destination = []
+                        #UPDATE INVENTORY AND CURRENT_BALANCE
+                        pass
+                    else:
                         return (Command.RESEARCH, None)
 
                 else:
-                    #move on if there are no reasonably priced items
-                    options = list(self.map.get_neighbours(location))
-                    return (Command.MOVE_TO, options[random.randint(0, len(options) - 1)])
-
-                
-
-
-            else:
-                #we have no information about the current market
-                return (Command.RESEARCH, None)
-                
-                #if location in bm:
-                    #probably try and get out
-                #    path = get_out(self, location) #tells us shortest path out of black and grey
-
-                #else:
-                #    return (Command.RESEARCH, None)
-        
-        else:
-            #WE HAVE NO INFORMATION ABOUT ANY MARKETS IN THE GAME
-            return (Command.RESEARCH, None)
-
-    
-
-
- 
-
-#self.map.get_neighbours(node_name)
-
-#self.map.is_road(n1, n2)
-
-
+                    next_step = self.destination.pop(0)
+                    return (Command.MOVE_TO, next_step)
