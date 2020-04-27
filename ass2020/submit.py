@@ -10,7 +10,7 @@ def send_to_server(js):
 	   js - json object to send to server
 	"""
 	clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	clientsocket.connect(('128.250.106.25', 5002))
+	clientsocket.connect(('128.250.106.25', 5003))
 
 	clientsocket.send("""{}EOM""".format(js).encode('utf-8'))
 
@@ -30,7 +30,7 @@ def submit_class(name, filename, cmd = "ADD", syn = 7):
 
 #from inspect import getsource
 #my_code = getsource(Player)
-submission = submit_class("xxBaTtLE_RoYalxx", "./Player2.py", cmd = "ADD", syn =13)
+submission = submit_class("risky", "./Player4.py", cmd = "ADD", syn =13)
 
 send_to_server(submission)
 
