@@ -341,6 +341,28 @@ class Player(BasePlayer):
 
         return turn_max
 
+    def converge_solution(self, turn_max, turn_value):
+        """
+        Author: Himansh Mishra and Calum McConville
+        Function evaluates and chooses best buying and selling locations based on distances from current location
+        :param turn_max: Dictionary that lists best market for each distance from current location
+        :param turn_value: The associated value placed on a single turn
+        :return: tuple containing the target location and expected profits
+        """
+        if 0 not in turn_max:
+            # we haven't researched current location
+            current_solution = (0, None)
+
+        else:
+            current_solution = turn_max[0]
+
+        for n_turn in turn_max:
+            if current_solution[0] < turn_max[n_turn][0] - (n_turn * turn_value):
+                current_solution = (turn_max[n_turn][0] - (n_turn * turn_value), turn_max[n_turn][1])
+
+        return current_solution
+
+
     def take_turn(self, location, prices, info, bm, gm):
         """
         @param location Name of your current location on map as a str.
@@ -444,18 +466,10 @@ class Player(BasePlayer):
                     #MAKE INTO A FUNCTION
                     #We don't have information about our current market
                     #solution = converge_solution(turn_max)
-                    if 0 not in turn_max:
-                        #we haven't researched current location
-                        current_solution = (0, location)
 
-                    else:
-                        current_solution = turn_max[0]
+                    current_solution = self.converge_solution(turn_max, turn_value)
 
-                    for n_turn in turn_max.keys():
-                        if turn_max[n_turn][0] > current_solution[0] - (n_turn * turn_value):
-                            current_solution = turn_max[n_turn]
-
-                    if current_solution[1] == location:
+                    if current_solution[1] == location or current_solution[1] is None:
                         if prices:
                             self.destination = []
                             decision = self.market_item_buy_value(location, decision_type="buy")
@@ -481,18 +495,9 @@ class Player(BasePlayer):
                         location, bm, gm)
                     
                     #We don't have information about our current market
-                    if 0 not in turn_max:
-                        #we haven't researched current location
-                        current_solution = (0, location)
+                    current_solution = self.converge_solution(turn_max, turn_value)
 
-                    else:
-                        current_solution = turn_max[0]
-
-                    for n_turn in turn_max.keys():
-                        if turn_max[n_turn][0] > current_solution[0] - (n_turn * turn_value):
-                            current_solution = turn_max[n_turn]
-
-                    if current_solution[1] == location:
+                    if current_solution[1] == location or current_solution[1] is None:
                         if prices:
                             decision = self.value_inventory(location, decision_type="sell")
                             
