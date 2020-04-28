@@ -341,6 +341,117 @@ class Player(BasePlayer):
 
         return turn_max
 
+    def get_safe_neighbour_market(self, location, bm):
+        """
+        Author: Jason Wang, Stephanie Zhou
+        # check whether the adjacent markets are safe markets
+        """
+
+        safe_neighbour_list = []
+        for i in self.map.map_data['node_graph']['location']:
+            if i not in bm:
+                safe_neighbour_list.append(i)
+        return safe_neighbour_list
+
+    def get_safe_market_list(self, bm):
+        """
+        Author: Jason Wang, Stephanie Zhou
+        # check safe markets
+        # return a list of safe markets
+        """
+
+        safe_market_list = []
+        for i in self.map.map_data['node_graph']:
+            if i not in bm:
+                safe_market_list.append(i)
+        return safe_market_list
+
+    def path_between_two_nodes(self, n1, n2):
+
+        # tests whether n2 is a valid destination
+        if n2 not in self.map.map_data['node_graph']:
+            return False
+
+        else:
+            # set distance to inf for all nodes and 0 for current node
+            distances = {vertex: float("inf") for vertex in self.map.map_data['node_graph'].keys()}
+            distances[n1] = 0
+
+            # set all nodes as unvisited
+            previous_vertices = {vertex: None for vertex in self.map.map_data['node_graph'].keys()}
+            vertices = list(self.map.map_data['node_graph'].keys()).copy()
+
+            while vertices:
+                # select unvisited node with smallest distance as current position
+                current_node = min(vertices, key=lambda vertex: (distances[vertex], vertex))
+                print(f"current node = {current_node}")
+
+                # break if smallest distance among unvisited is infinity (something is wrong)
+                if distances[current_node] == float("inf"):
+                    break
+
+                """
+                checks the cost of moving to each of the nodes neighbouring the current node.
+                Nodes that are either black or grey receive an additional penalty
+                """
+                for neighbour in self.map.map_data['node_graph'][current_node]:
+                    print(f"neighbour = {neighbour}")
+
+                    alternative_route = distances[current_node] + 1
+
+                    # check if this is currently the fastest way to reach the neighbour
+                    if alternative_route < distances[neighbour]:
+                        distances[neighbour] = alternative_route
+                        # if we've discovered a new fastest route update the access node
+                        previous_vertices[neighbour] = current_node
+
+                # Remove current node from unvisited nodes
+                vertices.remove(current_node)
+
+            path, current_node = deque(), n2
+
+            # generate path by moving through linked list to create path
+            while previous_vertices[current_node] is not None:
+                path.appendleft(current_node)
+                current_node = previous_vertices[current_node]
+            if path:
+                path.appendleft(current_node)
+                return list(path)
+
+
+    def safe_path(self, location, bm):
+        """
+        Author: Stephanie Zhou, Jason Wang, Himansh Mishra
+
+        # return the next market to go
+        """
+
+           safe_step = ''
+           safe_list = self.get_safe_market_list(self, location, bm)
+           safe_neighbours = self.get_safe_neighbour_market(self, location, bm)
+
+           # if the neighbouring market is safe
+           if safe_neighbours != []:
+               safe_step = safe_neighbours[random.randint(0, len(safe_neighbours))]
+
+           # if the current market is the only safe market
+           elif len(safe_list) == 1 and location == safe_list[0]:
+               safe_step = None
+
+           # if no neighbouring market is safe, the next step we take go to the closest safe market
+           else:
+               node_steps = {}
+               for i in safe_list:
+                   safe_step = path_between_two_nodes(location, i)
+                   node_steps[i] = len(safe_step)
+               min_step = min(node_steps.values())
+               safe_nodes = [k for k, v in node_steps if v = min_step]
+               safe_step = self.path_between_two_nodes(location,safe_nodes[random.randint(0,len(safe_nodes))])[0]
+
+           return safe_step
+
+
+
     def take_turn(self, location, prices, info, bm, gm):
         """
         @param location Name of your current location on map as a str.
