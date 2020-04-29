@@ -359,7 +359,7 @@ class Player(BasePlayer):
         """
 
         safe_neighbour_list = []
-        for i in self.map.map_data['node_graph']['location']:
+        for i in self.map.map_data['node_graph'][location]:
             if i not in bm:
                 safe_neighbour_list.append(i)
 
@@ -442,29 +442,29 @@ class Player(BasePlayer):
         # return the next market to go
         """
 
-           safe_step = ''
-           safe_list = self.get_safe_market_list(self, location, bm)
-           safe_neighbours = self.get_safe_neighbour_market(self, location, bm)
+        safe_step = ''
+        safe_list = self.get_safe_market_list(bm)
+        safe_neighbours = self.get_safe_neighbour_market(location, bm)
 
-           # if the neighbouring market is safe
-           if safe_neighbours != []:
-               safe_step = safe_neighbours[random.randint(0, len(safe_neighbours))]
+        # if the neighbouring market is safe
+        if safe_neighbours:
+            safe_step = safe_neighbours[random.randint(0, len(safe_neighbours)-1)]
 
-           # if the current market is the only safe market
-           elif len(safe_list) == 1 and location == safe_list[0]:
-               safe_step = None
+        # if the current market is the only safe market
+        elif len(safe_list) == 1 and location == safe_list[0]:
+            safe_step = None
 
-           # if no neighbouring market is safe, the next step we take go to the closest safe market
-           else:
-               node_steps = {}
-               for i in safe_list:
-                   safe_step = path_between_two_nodes(location, i)
-                   node_steps[i] = len(safe_step)
-               min_step = min(node_steps.values())
-               safe_nodes = [k for k, v in node_steps if v = min_step]
-               safe_step = self.path_between_two_nodes(location,safe_nodes[random.randint(0,len(safe_nodes))])[0]
+        # if no neighbouring market is safe, the next step we take go to the closest safe market
+        else:
+            node_steps = {}
+            for i in safe_list:
+                safe_step = path_between_two_nodes(location, i)
+                node_steps[i] = len(safe_step)
+            min_step = min(node_steps.values())
+            safe_nodes = [k for k, v in node_steps if v == min_step]
+            safe_step = self.path_between_two_nodes(location,safe_nodes[random.randint(0,len(safe_nodes))])[1]
 
-           return safe_step
+        return safe_step
 
 
 
