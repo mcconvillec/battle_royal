@@ -21,7 +21,7 @@ GOAL_BONUS = 10000
 
 OUTSIDE_CIRCLE_PENALTY = 100  # gold per turn outside circle
 
-EXCHANGE_LENGTH = 3   # number of markets to exchange information upon from each co-located player
+EXCHANGE_LENGTH = 4   # number of markets to exchange information upon from each co-located player
 
     # Indexes into player tuple
 INFO_LOC = 0   # location str
@@ -176,12 +176,12 @@ class Game:
                     this_market = {}
 
                 try:
-                    with silence_stdout():
-                        res = Timer.timeout(p_info[INFO_OBJ].take_turn, (p_info[INFO_LOC], this_market, copy.deepcopy(other_info), bnodes, gnodes))
-                        #res = p_info[INFO_OBJ].take_turn(p_info[INFO_LOC], this_market, copy.deepcopy(other_info), bnodes, gnodes)
-                        if res is None:
-                            raise Exception('Timeout', 'take_turn')
-                        cmd,data = res
+                    #with silence_stdout():
+                    res = Timer.timeout(p_info[INFO_OBJ].take_turn, (p_info[INFO_LOC], this_market, copy.deepcopy(other_info), bnodes, gnodes))
+                    #res = p_info[INFO_OBJ].take_turn(p_info[INFO_LOC], this_market, copy.deepcopy(other_info), bnodes, gnodes)
+                    if res is None:
+                        raise Exception('Timeout', 'take_turn')
+                    cmd,data = res
                 except Exception:
                     return((p_info[INFO_OBJ], traceback.format_exc()))
 
