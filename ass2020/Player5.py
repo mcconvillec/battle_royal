@@ -5,7 +5,7 @@ and Jason Yang
 
 This module contains a class definition for Player, a program designed
 to implement a score optimisation strategy for the Battle Royal game 
-specifed by the Project Specification for the BUSA_90500_MAR Programming
+detailed in the Project Specification for the BUSA_90500_MAR Programming
 subject.
 """
 
@@ -20,14 +20,12 @@ import Command
 #ISSUES TO FIX:
 #Think about when we want:
 # focus on getting goals,
-# to buy,
-# to sell,
+#Make estimate quantity and price one function with (index = 1 or 0 argument)
+#Figure out what is happening with Himansh's function and get rid of ranking by location if it doesn't work
 # run away and avoid black 
 # ifelse buy return off current market <= 0 (in Rebecca's function) then Command.Pass
 #ERRORS:
-#-Calculation of gold is off
 #-Try different weightings on turns (INCREASED MIGHT SPEED UP ACTIONS)
-#-Make code well commented and styled (IMPORTANT)
 #-Try different levels of info before optimising (10, 5, less than 5?)
 
 
@@ -127,8 +125,8 @@ class Player(BasePlayer):
         averages = defaultdict(list)
         
         #compiles all prices of items currently known
-        for market in self.market_history.keys():
-            for item in self.market_history[market].keys():
+        for market in self.market_history:
+            for item in self.market_history[market]:
                 averages[item].append(self.market_history[market][item][0])
         
         #creates averages of each item based on current information
@@ -148,8 +146,8 @@ class Player(BasePlayer):
         predict_avg_qty = defaultdict(list)
 
         # compiles all quantities of items currently known
-        for market in self.market_history.keys():
-            for item in self.market_history[market].keys():
+        for market in self.market_history:
+            for item in self.market_history[market]:
                 if self.market_history[market][item][1] is None:
                     pass
                 else:
@@ -189,7 +187,7 @@ class Player(BasePlayer):
         """
 
         best_return = 0
-        for item in self.market_history[market].keys():
+        for item in self.market_history[market]:
             #ONLY CONSIDERS SELLING STOCK ON TOP OF needs. CAN CHANGE THIS FOR TESTING
             #item_value = self.market_history[market][item][0] * (self.inventory[item] \
             #    - self.goal[item])
@@ -228,7 +226,7 @@ class Player(BasePlayer):
         best_value = 0
         purchase_qty = None
 
-        for item in self.market_history[market].keys():
+        for item in self.market_history[market]:
 
             budget_amt = self.budget_amt(item, market, self.current_balance)
 
@@ -324,7 +322,7 @@ class Player(BasePlayer):
         """
         turn_max = defaultdict(tuple)
         #find optimum selling decisions for each turn
-        for market in self.market_history.keys():
+        for market in self.market_history:
             #Returns the shortest path to this market from current location
             path = len(self.dijkstra_lite(location, market, bm, gm))
             radius = max(0, path - 1) #incase we're considering current location
@@ -381,7 +379,7 @@ class Player(BasePlayer):
         if info:
             
             #Add information to market_history
-            for market in info.keys():
+            for market in info:
                 #as long as we don't already have the market information
                 if market not in self.market_history:
                     self.market_history[market] = \
@@ -403,6 +401,7 @@ class Player(BasePlayer):
                     return (Command.BUY, instruction)
                 else:
                     #move randomly based away from grey and black region
+                    #INSERT FUNCTION HERE
                     options = [x for x in list(self.map.get_neighbours(location)) \
                     if x not in bm + gm]
                     
@@ -418,6 +417,7 @@ class Player(BasePlayer):
                         return (Command.RESEARCH, None)
                     else:
                         #move randomly based away from grey and black region
+                        #INSERT FUNCTION HERE
                         options = [x for x in list(self.map.get_neighbours(location)) \
                         if x not in bm + gm]
                         
@@ -436,7 +436,7 @@ class Player(BasePlayer):
 
             if not self.destination:
                
-                if self.current_balance > 2000 or self.turn < 290:
+                if self.current_balance > 2000 and self.turn < 290:
                     turn_value = 400 + self.turn
                     turn_max = self.optimise_decision(self.market_item_buy_value, \
                         location, bm, gm)
@@ -451,7 +451,7 @@ class Player(BasePlayer):
                     else:
                         current_solution = turn_max[0]
 
-                    for n_turn in turn_max.keys():
+                    for n_turn in turn_max:
                         if turn_max[n_turn][0] > current_solution[0] - (n_turn * turn_value):
                             current_solution = turn_max[n_turn]
 
@@ -481,6 +481,7 @@ class Player(BasePlayer):
                         location, bm, gm)
                     
                     #We don't have information about our current market
+                    #FUNCTION START
                     if 0 not in turn_max:
                         #we haven't researched current location
                         current_solution = (0, location)
@@ -488,10 +489,11 @@ class Player(BasePlayer):
                     else:
                         current_solution = turn_max[0]
 
-                    for n_turn in turn_max.keys():
+                    for n_turn in turn_max:
                         if turn_max[n_turn][0] > current_solution[0] - (n_turn * turn_value):
                             current_solution = turn_max[n_turn]
 
+                    #FUNCTION STOP
                     if current_solution[1] == location:
                         if prices:
                             decision = self.value_inventory(location, decision_type="sell")
@@ -526,7 +528,6 @@ class Player(BasePlayer):
                         return (Command.SELL, decision)
                     
                     else:
-                        
                         return (Command.RESEARCH, None)
 
                 elif self.destination == ["buy"]:
